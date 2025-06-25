@@ -6,7 +6,7 @@ JedecChain;
 	P ActionCode(Ign)
 		Device PartName(SOCVHPS) MfrSpec(OpMask(0));
 	P ActionCode(Cfg)
-		Device PartName(5CSXFC6D6F31) Path("D:/Development/DGIST/Project/PIC_Control/Source/GUI/FPGA/output_files/") File("GUI_Test.sof") MfrSpec(OpMask(1));
+		Device PartName(5CSXFC6D6) Path("D:/Development/DGIST/Project/PIC_Control/Source/GUI/FPGA/output_files/") File("output_file.jic") MfrSpec(OpMask(1) SEC_Device(EPCS128) Child_OpMask(1 1));
 
 ChainEnd;
 

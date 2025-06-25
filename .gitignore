@@ -1,0 +1,115 @@
+# Quartus II/Prime generated files
+*.rpt
+*.summary
+*.done
+*.jdi
+*.pin
+*.pof
+*.ptf.*
+*.qar
+*.qarlog
+*.qws
+*.sof
+*.sopc_builder
+*.bsf
+*.cmp
+*.logdb
+*.smsg
+
+# Quartus compilation database
+*.qdb/
+incremental_db/
+db/
+
+# Quartus IP cache
+.qsys_edit/
+*.qsys.bak
+*.sopcinfo
+
+# Timing analysis
+*.sta.rpt
+*.sta.summary
+
+# Synthesis reports
+*.map.rpt
+*.map.summary
+
+# Fitter reports
+*.fit.rpt
+*.fit.summary
+
+# Assembler reports
+*.asm.rpt
+
+# TimeQuest reports
+*.tan.rpt
+*.tan.summary
+
+# Power analyzer reports
+*.pow.rpt
+*.pow.summary
+
+# Generated HDL files
+*_generation_script*
+*.v.bak
+*.vhd.bak
+
+# Quartus workspace and settings
+*.qws
+work/
+transcript
+vsim.wlf
+*.wlf
+
+# ModelSim/QuestaSim files
+*.mpf
+*.mti
+work/
+transcript
+vsim.wlf
+*.wlf
+*.vstf
+*.wlf
+*.qdb
+
+# Signal Tap files
+*.stp
+
+# Assignment files backups
+*.qsf.bak
+*.qpf.bak
+
+# Programming files
+*.pof
+*.sof
+*.rbf
+*.hex
+*.mif
+
+# Quartus logs
+*.qarlog
+
+# Operating system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Quartus project archive
+*.qar

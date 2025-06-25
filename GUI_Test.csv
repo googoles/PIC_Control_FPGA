@@ -1,0 +1,32 @@
+# Copyright (C) 2020  Intel Corporation. All rights reserved.
+# Your use of Intel Corporation's design tools, logic functions 
+# and other software and tools, and any partner logic 
+# functions, and any output files from any of the foregoing 
+# (including device programming or simulation files), and any 
+# associated documentation or information are expressly subject 
+# to the terms and conditions of the Intel Program License 
+# Subscription Agreement, the Intel Quartus Prime License Agreement,
+# the Intel FPGA IP License Agreement, or other applicable license
+# agreement, including, without limitation, that your use is for
+# the sole purpose of programming logic devices manufactured by
+# Intel and sold by Intel or its authorized distributors.  Please
+# refer to the applicable agreement for further details, at
+# https://fpgasoftware.intel.com/eula.
+
+# Quartus Prime Version 20.1.1 Build 720 11/11/2020 SJ Lite Edition
+# File: D:\Development\DGIST\Project\PIC_Control\Source\GUI\FPGA\GUI_Test.csv
+# Generated on: Tue May 27 11:38:48 2025
+
+# Note: The column header names should not be changed if you wish to import this .csv file into the Quartus Prime software.
+
+To,Direction,Location,I/O Bank,VREF Group,I/O Standard,Reserved,Current Strength,Slew Rate,Differential Pair,Transceiver Analog Settings Protocol,VCCR_GXB/VCCT_GXB Voltage,Transceiver I/O Pin Termination,Transceiver Dedicated Refclk Pin Termination,Transmitter Common Mode Driver Voltage,Transmitter Slew Rate Control,Transmitter Differential Output Voltage,Receiver Buffer Common Mode Voltage,Strict Preservation
+LEDR[2],Unknown,PIN_AC23,4A,B4A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[0],Unknown,PIN_AA24,5A,B5A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[1],Unknown,PIN_AB23,5A,B5A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[3],Unknown,PIN_AD24,4A,B4A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[4],Unknown,PIN_AG25,4A,B4A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[5],Unknown,PIN_AF25,4A,B4A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[6],Unknown,PIN_AE24,4A,B4A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[7],Unknown,PIN_AF24,4A,B4A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[8],Unknown,PIN_AB22,5A,B5A_N0,3.3-V LVTTL,,,,,,,,,,,,,
+LEDR[9],Unknown,PIN_AC22,4A,B4A_N0,3.3-V LVTTL,,,,,,,,,,,,,

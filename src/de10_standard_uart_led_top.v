@@ -1,64 +1,97 @@
-// de10_standard_uart_led_top.v
+// de10_standard_uart_led_top.v - 깔끔한 UART + LED 제어 시스템
 module de10_standard_uart_led_top (
-    input wire CLOCK_50,        // 50MHz clock from DE10-Standard
-    input wire KEY0,            // Push button KEY[0] for reset (active-low)
-    input wire GPIO_0_RX_DATA,  // GPIO_0[0] for UART RX (connect this to your UART input)
-    output wire GPIO_0_TX_DATA, // NEW: GPIO_0[1] for UART TX (connect this to your UART output)
-    output wire [9:0] LEDR      // Red LEDs on DE10-Standard
+    // 시스템 신호
+    input  wire        CLOCK_50,      // 50MHz 시스템 클럭
+    input  wire        KEY0,          // 리셋 버튼 (액티브 로우)
+    
+    // UART 신호
+    input  wire        GPIO_0_RX_DATA, // UART RX (GPIO_0 pin 0)
+    output wire        GPIO_0_TX_DATA, // UART TX (GPIO_0 pin 1)
+    
+    // LED 출력
+    output wire [9:0]  LEDR           // Red LEDs
 );
 
-    // Internal wires to connect modules
-    wire [7:0] received_data_internal_wire; // Data from uart_rx to led_controller and uart_tx
-    wire       rx_data_valid_internal_wire; // Data valid signal from uart_rx
-    wire       rst_n;
+// ============================================================================
+// 내부 신호 선언
+// ============================================================================
+wire        rst_n;                    // 내부 리셋 신호
+wire [7:0]  rx_data;                  // UART RX 데이터
+wire        rx_valid;                 // UART RX 유효 신호
+wire        tx_busy;                  // UART TX 비지 신호
+reg         tx_start;                 // UART TX 시작 신호
+reg  [7:0]  tx_data;                  // UART TX 데이터
 
-    // For UART TX control
-    reg        tx_start_reg;     // Signal to start TX
-    wire       tx_busy_wire;     // TX busy signal from uart_tx
+// 디버깅용 신호 (Signal Tap에서 관찰)
+wire [2:0]  rx_debug_state;
+wire [4:0]  rx_debug_bit_cnt;
+wire [8:0]  rx_debug_clk_cnt;
+wire [2:0]  tx_debug_state;
+wire [4:0]  tx_debug_bit_cnt;
+wire [8:0]  tx_debug_clk_cnt;
 
-    assign rst_n = ~KEY0;
+// ============================================================================
+// 리셋 신호 처리
+// ============================================================================
+assign rst_n = KEY0;  // KEY0를 누르면 리셋 (액티브 로우)
 
-    // Instantiate UART Receiver Module
-    uart_rx u_uart_rx (
-        .clk(CLOCK_50),
-        .rst_n(rst_n),
-        .uart_rx_in(GPIO_0_RX_DATA),
-        .received_byte(received_data_internal_wire),
-        .rx_data_valid(rx_data_valid_internal_wire)
-    );
+// ============================================================================
+// UART RX 모듈 인스턴스
+// ============================================================================
+uart_rx u_uart_rx (
+    .clk           (CLOCK_50),
+    .rst_n         (rst_n),
+    .uart_rx_in    (GPIO_0_RX_DATA),
+    .rx_data       (rx_data),
+    .rx_valid      (rx_valid),
+    .debug_state   (rx_debug_state),
+    .debug_bit_cnt (rx_debug_bit_cnt),
+    .debug_clk_cnt (rx_debug_clk_cnt)
+);
 
-    // Instantiate LED Controller Module
-    led_controller u_led_controller (
-        .clk(CLOCK_50),
-        .rst_n(rst_n),
-        .received_data(received_data_internal_wire),
-        .data_valid(rx_data_valid_internal_wire),
-        .ledr_out(LEDR)
-    );
+// ============================================================================
+// UART TX 모듈 인스턴스
+// ============================================================================
+uart_tx u_uart_tx (
+    .clk           (CLOCK_50),
+    .rst_n         (rst_n),
+    .tx_data       (tx_data),
+    .tx_start      (tx_start),
+    .uart_tx_out   (GPIO_0_TX_DATA),
+    .tx_busy       (tx_busy),
+    .debug_state   (tx_debug_state),
+    .debug_bit_cnt (tx_debug_bit_cnt),
+    .debug_clk_cnt (tx_debug_clk_cnt)
+);
 
-    // Instantiate UART Transmitter Module
-    uart_tx u_uart_tx (
-        .clk(CLOCK_50),
-        .rst_n(rst_n),
-        .tx_data(received_data_internal_wire), // Transmit the received data
-        .tx_start(tx_start_reg),             // Start TX when data is valid and not busy
-        .uart_tx_out(GPIO_0_TX_DATA),        // Connect to a general purpose I/O pin for UART TX
-        .tx_busy(tx_busy_wire)
-    );
+// ============================================================================
+// LED 컨트롤러 모듈 인스턴스
+// ============================================================================
+led_controller u_led_controller (
+    .clk      (CLOCK_50),
+    .rst_n    (rst_n),
+    .rx_data  (rx_data),
+    .rx_valid (rx_valid),
+    .led_out  (LEDR)
+);
 
-    // Logic to trigger UART TX: Echo the received data
-    // When new data is valid AND the TX module is not busy, start transmission.
-    always @(posedge CLOCK_50 or negedge rst_n) begin
-        if (!rst_n) begin
-            tx_start_reg <= 1'b0;
-        end else begin
-            // tx_start_reg should be a single clock pulse
-            if (rx_data_valid_internal_wire && !tx_busy_wire) begin
-                tx_start_reg <= 1'b1;
-            end else begin
-                tx_start_reg <= 1'b0;
-            end
+// ============================================================================
+// UART TX 에코백 로직
+// ============================================================================
+always @(posedge CLOCK_50 or negedge rst_n) begin
+    if (!rst_n) begin
+        tx_start <= 1'b0;
+        tx_data  <= 8'h00;
+    end else begin
+        // 기본값
+        tx_start <= 1'b0;
+        
+        // 새로운 데이터가 수신되고 TX가 바쁘지 않을 때 에코백
+        if (rx_valid && !tx_busy) begin
+            tx_data  <= rx_data;  // 받은 데이터를 그대로 에코백
+            tx_start <= 1'b1;    // TX 시작
         end
     end
+end
 
 endmodule

@@ -1,65 +1,136 @@
-// uart_tx.v
+// uart_tx.v - 115200 baud, 깔끔한 구현
 module uart_tx (
-    input wire         clk,           // 50MHz system clock
-    input wire         rst_n,         // Active-low asynchronous reset
-    input wire  [7:0]  tx_data,       // Data to be transmitted
-    input wire         tx_start,      // Pulse high for one clock cycle to start transmission
-
-    output reg         uart_tx_out,   // Outgoing UART data line
-    output reg         tx_busy        // High when transmission is in progress
+    input  wire        clk,           // 50MHz 시스템 클럭
+    input  wire        rst_n,         // 액티브 로우 리셋
+    input  wire [7:0]  tx_data,       // 전송할 8비트 데이터
+    input  wire        tx_start,      // 전송 시작 신호 (1 클럭 펄스)
+    
+    output reg         uart_tx_out,   // UART 출력 신호
+    output reg         tx_busy,       // 전송 중 신호
+    
+    // 디버깅용 출력
+    output wire [2:0]  debug_state,   // 현재 상태
+    output wire [4:0]  debug_bit_cnt, // 비트 카운터
+    output wire [8:0]  debug_clk_cnt  // 클럭 카운터
 );
 
-    // --- Parameters ---
-    // Same as uart_rx, for 115200 baud at 50MHz clock, 16x oversampling
-    localparam BAUD_RATE_CLOCK_DIV = 27; // 50,000,000 / (115200 * 16) = 27.126 -> use 27
-    localparam OVERSAMPLE_FACTOR   = 16; // 16 samples per bit
+// ============================================================================
+// 파라미터 정의
+// ============================================================================
+localparam CLK_PER_BIT = 434;         // 50MHz / 115200 = 434.03 ≈ 434
 
-    // --- Internal States and Registers ---
-    reg [3:0]   bit_count;        // Counts 0 to 9 (start, 8 data, stop bits)
-    reg [4:0]   sample_count;     // Counts samples within a bit time
-    reg         tx_state;         // 0: IDLE, 1: SENDING_BITS
+// 상태 정의
+localparam IDLE       = 3'b000;
+localparam START_BIT  = 3'b001;
+localparam DATA_BITS  = 3'b010;
+localparam STOP_BIT   = 3'b011;
+localparam CLEANUP    = 3'b100;
 
-    reg [9:0]   tx_shift_reg;     // Stores bits to send: [start_bit, D0, ..., D7, stop_bit]
+// ============================================================================
+// 내부 신호
+// ============================================================================
+reg [2:0]  state;
+reg [8:0]  clk_count;    // 0~433 카운트
+reg [4:0]  bit_index;    // 0~7 비트 인덱스
+reg [7:0]  tx_byte;      // 전송 중인 바이트
 
-    // State machine for transmission
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            tx_state        <= 0;
-            bit_count       <= 0;
-            sample_count    <= 0;
-            uart_tx_out     <= 1'b1; // UART TX idle is High
-            tx_busy         <= 1'b0;
-        end else begin
-            tx_busy <= (tx_state == 1); // Indicate busy when sending
+// 디버깅 신호 연결
+assign debug_state   = state;
+assign debug_bit_cnt = bit_index;
+assign debug_clk_cnt = clk_count;
 
-            case (tx_state)
-                0: begin // IDLE state
-                    uart_tx_out <= 1'b1; // Keep TX line high in idle
-                    if (tx_start) begin // Start transmission
-                        tx_state     <= 1;
-                        bit_count    <= 0;
-                        sample_count <= BAUD_RATE_CLOCK_DIV - 1; // Start at the beginning of the first bit
-                        // Load the shift register: [stop_bit, D7, ..., D0, start_bit]
-                        // Note: Bit order is LSB first for UART.
-                        tx_shift_reg <= {1'b1, tx_data, 1'b0}; // {Stop_Bit, Data[7:0], Start_Bit}
-                    end
+// ============================================================================
+// 메인 로직
+// ============================================================================
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        state       <= IDLE;
+        clk_count   <= 9'd0;
+        bit_index   <= 5'd0;
+        tx_byte     <= 8'd0;
+        uart_tx_out <= 1'b1;        // UART idle = HIGH
+        tx_busy     <= 1'b0;
+    end else begin
+        
+        case (state)
+            // ================================================================
+            // IDLE: 전송 시작 대기
+            // ================================================================
+            IDLE: begin
+                uart_tx_out <= 1'b1;    // idle state = HIGH
+                tx_busy     <= 1'b0;
+                clk_count   <= 9'd0;
+                bit_index   <= 5'd0;
+                
+                if (tx_start) begin      // 전송 시작
+                    tx_byte <= tx_data;  // 데이터 래치
+                    state   <= START_BIT;
+                    tx_busy <= 1'b1;
                 end
-                1: begin // SENDING_BITS state
-                    if (sample_count == 0) begin // End of a sample period (time to send next bit)
-                        sample_count <= BAUD_RATE_CLOCK_DIV - 1; // Reset sample counter
-
-                        if (bit_count < 10) begin // Send 10 bits (start, 8 data, stop)
-                            uart_tx_out <= tx_shift_reg[bit_count]; // Output current bit
-                            bit_count   <= bit_count + 1;           // Move to next bit
-                        end else begin // All bits sent
-                            tx_state <= 0; // Go back to IDLE
-                        end
+            end
+            
+            // ================================================================
+            // START_BIT: start bit (LOW) 전송
+            // ================================================================
+            START_BIT: begin
+                uart_tx_out <= 1'b0;    // start bit = LOW
+                
+                if (clk_count == CLK_PER_BIT - 1) begin
+                    clk_count <= 9'd0;
+                    state     <= DATA_BITS;
+                end else begin
+                    clk_count <= clk_count + 1;
+                end
+            end
+            
+            // ================================================================
+            // DATA_BITS: 8개 데이터 비트 전송 (LSB first)
+            // ================================================================
+            DATA_BITS: begin
+                uart_tx_out <= tx_byte[bit_index];  // 현재 비트 출력
+                
+                if (clk_count == CLK_PER_BIT - 1) begin
+                    clk_count <= 9'd0;
+                    
+                    if (bit_index == 7) begin        // 8비트 모두 전송
+                        bit_index <= 5'd0;
+                        state     <= STOP_BIT;
                     end else begin
-                        sample_count <= sample_count - 1; // Decrement sample counter
+                        bit_index <= bit_index + 1;
                     end
+                end else begin
+                    clk_count <= clk_count + 1;
                 end
-            endcase
-        end
+            end
+            
+            // ================================================================
+            // STOP_BIT: stop bit (HIGH) 전송
+            // ================================================================
+            STOP_BIT: begin
+                uart_tx_out <= 1'b1;    // stop bit = HIGH
+                
+                if (clk_count == CLK_PER_BIT - 1) begin
+                    clk_count <= 9'd0;
+                    state     <= CLEANUP;
+                end else begin
+                    clk_count <= clk_count + 1;
+                end
+            end
+            
+            // ================================================================
+            // CLEANUP: 전송 완료, idle로 복귀 준비
+            // ================================================================
+            CLEANUP: begin
+                uart_tx_out <= 1'b1;    // idle state = HIGH
+                tx_busy     <= 1'b0;
+                state       <= IDLE;
+            end
+            
+            default: begin
+                state <= IDLE;
+            end
+        endcase
     end
+end
 
 endmodule
